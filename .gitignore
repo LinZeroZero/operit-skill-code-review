@@ -1,0 +1,11 @@
+# macOS 解压产物
+.DS_Store
+
+# install.sh 的备份目录与半截下载
+*.bak.*
+*.part
+
+# 编辑器/临时文件
+.idea/
+*.swp
+*~
