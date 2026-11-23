@@ -47,7 +47,7 @@ description: 审查代码改动或整份文件，输出带 file:line 的 finding
 | Complexity | 行/函数/类是否「读一遍看不懂」？是否为不需要的将来留了抽象？ | 过度设计、投机性抽象要点出 |
 | Tests | 有没有测试？失败路径测了吗？ | 本项目多为反编译/改包/模块脚本类工程，无单测 → 按 §2.6 用可执行证据替代 |
 | Naming | 名字是否准确表达含义？ | 偏好类命名交 linter；**语义误导**（会让人用错）属于可维护性问题，可提 |
-| Comments | 注释是否解释**为什么**，而不是复述代码在做什么？ | 本项目要求注释解释 why、写清运行时状态文件格式与关键约定 |
+| Comments | 注释是否解释**为什么**，而不是复述代码在做什么？与代码是否仍一致？ | 本项目要求注释解释 why、写清运行时状态文件格式与关键约定；一致性判据见 `references/comments.md`（挂 §2.7） |
 | Style | 格式、缩进、行宽、命名偏好 | **不评**，见 §7「明确不做」 |
 | Consistency | 与代码库既有写法一致吗？同一抽象的多实现是否同口径？ | 后者按 §2.7 的 provider 触发项 |
 | Documentation | 改了行为却没说？README / CHANGELOG / 注释是否需同步？ | 对外行为变化时必须提 |
@@ -128,6 +128,7 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | 其他语言 | `references/upstream/<lang>.md`：`c` `cpp` `csharp` `go` `java` `java8` `kotlin` `python` `php` `ruby` `rust` `swift` `dart` `typescript` `zig` `qt`；前端 `react` `vue` `angular` `svelte` `css-less-sass`；后端 `django` `fastapi` `nestjs` |
 | 跨领域 | `references/upstream/cross-cutting/`：`sql-injection-prevention` `xss-prevention` `n-plus-one-queries` `error-handling-principles` `async-concurrency-patterns` |
 | 通用质量 | `references/upstream/code-quality-universal.md`、`references/upstream/common-bugs-checklist.md`、`references/upstream/security-review-guide.md`、`references/upstream/performance-review-guide.md` |
+| 注释一致性 | `references/comments.md`（判据档，独立于语言档，任何语言都适用） |
 | 反馈怎么说 | `references/upstream/code-review-best-practices.md` |
 
 上游档是英文原文，按小节标题（`##`）取用；引用时写清小节名，方便对方回查。
@@ -175,6 +176,8 @@ node -e "const a=require('<SKILL_DIR_UI>/scripts/audit.js'); console.log(a.audit
 - `references/android/ksu-webui.md`：`ksu.exec` 返回值形态、错误分支、执行成功不等于命令成功、DOM 取值方式、视口与缩放。
 - `references/android/smali-apk.md`：寄存器宽度与 `/range`、`const/4` 边界、资源 ID 连带、manifest 运行时副作用、R8 混淆后的定位方式。
 
+这三档只覆盖 Android 侧。判据档 `references/comments.md` 与语言无关，任何工程都适用，不在这三档之内。
+
 ## 7. 明确不做
 
 - **不改代码**。审查的产物是判断，不是补丁；要改另开任务，避免「边审边改」导致结论失去独立性。
@@ -216,11 +219,11 @@ node -e "const a=require('<SKILL_DIR_UI>/scripts/audit.js'); console.log(a.audit
 
 ## 10. 目录与许可
 
-上游底稿：`awesome-skills/code-review-skill`（MIT，提交号与更新方法见 `references/upstream/SOURCE.txt`）。`references/upstream/` 30 篇（24 篇语言/前端/后端档 + 6 篇通用档）+ 5 篇跨领域（英文原文）；`references/android/` 自研三档（中文）。目录树由宿主注入，不重复。
+上游底稿：`awesome-skills/code-review-skill`（MIT，提交号与更新方法见 `references/upstream/SOURCE.txt`）。`references/upstream/` 30 篇（24 篇语言/前端/后端档 + 6 篇通用档）+ 5 篇跨领域（英文原文）；`references/android/` 自研三档（中文）；`references/comments.md` 自研判据档（中文，与语言无关）。目录树由宿主注入，不重复。
 
 ## 11. 使用前自检
 
-**覆盖**：shell/Magisk、KSU WebUI、smali 三档与 20+ 语言；四阶段流程、十项审查维度（§2.4）、改动类型触发项（§2.7）、严重度分级、带 file:line 的 finding。
+**覆盖**：shell/Magisk、KSU WebUI、smali 三档与 20+ 语言；四阶段流程、十项审查维度（§2.4）、改动类型触发项（§2.7）、注释一致性（§2.4 / `references/comments.md`）、严重度分级、带 file:line 的 finding。
 
 **不覆盖**：运行时性能剖析、模糊测试、整体架构评审、加固包逆向（交「APK逆向改包」技能）。
 
