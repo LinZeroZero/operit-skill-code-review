@@ -55,7 +55,9 @@ if [ -z "$SKILL_DIR" ]; then
     SKILL_DIR="/sdcard/Download/Operit/skills/$NAME"
   fi
 fi
-[ -n "$OUT" ] || OUT="$PWD/code-review.tar.gz"
+# 默认落到临时目录：在仓库里跑时 $PWD 是工作树，产物会直接丢进仓库，
+# .gitignore 漏一行就会被误提交。
+[ -n "$OUT" ] || OUT="${TMPDIR:-/tmp}/code-review.tar.gz"
 
 # ---- 1. 目录合规 ----
 [ -d "$SKILL_DIR" ] || die "技能目录不存在: $SKILL_DIR" 2

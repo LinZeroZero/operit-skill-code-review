@@ -9,3 +9,5 @@
 .idea/
 *.swp
 *~
+# 发布资产（make-release.sh 若显式指定到仓库根就在这里兜住）
+code-review.tar.gz
