@@ -34,12 +34,13 @@ awk -F'|' '
 /^\| *[0-9]+ *\|/ {
   s=$3; c=$5;
   gsub(/^ +| +$/,"",s); gsub(/^ +| +$/,"",c);
-  if (!(index(s,"🔴")||index(s,"🟡")||index(s,"🟢")||index(s,"💡")||index(s,"🎉"))) next;
+  rows++;
+  if (!(index(s,"🔴")||index(s,"🟡")||index(s,"🟢")||index(s,"💡")||index(s,"📚")||index(s,"🎉"))) next;
   hits++;
-  if (index(s,"💡")||index(s,"🎉")) next;
+  if (index(s,"💡")||index(s,"📚")||index(s,"🎉")) next;
   if (c !~ /^(\*\*)?【(注释|代码|跨文件|未知)】/) print NR": 缺少前缀 -> "c
 }
-END { if (has && hits==0) { print "格式不兼容：有 findings 表头，但未识别到严重度列（应以 🔴/🟡/🟢/💡/🎉 打头）"; exit 3 } }
+END { if (has && rows>0 && hits==0) { print "格式不兼容：有 findings 数据行，但一行严重度都识别不到（应以 🔴/🟡/🟢/💡/📚/🎉 打头）"; exit 3 } }
 ' 报告.md
 ```
 
