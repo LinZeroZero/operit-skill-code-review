@@ -30,8 +30,15 @@
 
 ```sh
 awk -F'|' '
-/^\|/ { h=$2; gsub(/^ +| +$/,"",h); if (h=="#") { t=$3; gsub(/^ +| +$/,"",t); if (t ~ /严重度/) has=1 } }
-/^\| *[0-9]+ *\|/ {
+/^\|/ {
+  h=$2; gsub(/^ +| +$/,"",h);
+  if (h=="#") {                        # 表头行：靠第三列是否含「严重度」区分 findings 表与取证明细表
+    t=$3; gsub(/^ +| +$/,"",t);
+    if (t ~ /严重度/) { has=1; intbl=1 } else { intbl=0 }
+    next
+  }
+  if (h !~ /^[0-9]+$/) next;             # 分隔行 / 非数据行
+  if (!intbl) next;                      # 取证明细表的行不计 rows
   s=$3; c=$5;
   gsub(/^ +| +$/,"",s); gsub(/^ +| +$/,"",c);
   rows++;
@@ -40,7 +47,8 @@ awk -F'|' '
   if (index(s,"💡")||index(s,"📚")||index(s,"🎉")) next;
   if (c !~ /^(\*\*)?【(注释|代码|跨文件|未知)】/) print NR": 缺少前缀 -> "c
 }
-END { if (has && rows>0 && hits==0) { print "格式不兼容：有 findings 数据行，但一行严重度都识别不到（应以 🔴/🟡/🟢/💡/📚/🎉 打头）"; exit 3 } }
+{ if ($0 !~ /^\|/) intbl=0 }        # 离开表格就重置，防后面的表被误认为 findings
+END { if (has && rows>0 && hits==0) { print "格式不兼容：findings 表有数据行，但一行严重度都识别不到（应以 🔴/🟡/🟢/💡/📚/🎉 打头）"; exit 3 } }
 ' 报告.md
 ```
 
