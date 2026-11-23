@@ -34,6 +34,7 @@ description: 审查代码改动或整份文件，输出带 file:line 的 finding
 **阶段 3 · 逐行**：逻辑与边界、安全、可维护、**复用审计**（这段是不是重复实现了已有的东西）。
 **阶段 4 · 结论**：先结论后依据；给严重度分布；明确「能不能合」。
 **收敛判据**：连续两轮无 🔴/🟡，且剩余 finding 全部依赖自造输入（无真实样本支撑）→ 判收敛，不再追 nit；把剩余项记进报告的「已知局限」即可。nit 永远找得出来，这类报告的价值不在它们身上。
+（「连续两轮」是**项目约定**，不是 Google 标准 —— 该站只说“不完美也应批准、不重要的问题可标 `Nit:` 忽略”，没给轮次阈值；换到别的项目可自行调这个数，但要写明是本项目约定。）
 
 阶段 2 允许扫读（看结构、看方案是否解决对的问题），阶段 3 必须逐行；两者都不许跳过——只做逐行会漏掉「实现得很干净的错方案」。
 
@@ -55,7 +56,7 @@ description: 审查代码改动或整份文件，输出带 file:line 的 finding
 | Every Line | **逐行读，不跳读** | 与阶段 3 一致；跳读会漏掉「实现得很干净的错方案」 |
 
 依据：https://google.github.io/eng-practices/review/reviewer/looking-for.html
-（该页开头要求结合 The Standard of Code Review 使用：追求持续改善，不追求完美，不重要的问题标 `Nit:`。）
+（该页开头提示：评估下列各项时务必考虑 The Standard of Code Review，原文 `Always make sure to take into account The Standard of Code Review when considering each of these points.`。该标准页原句：`Instead of seeking perfection, what a reviewer should seek is continuous improvement.`、`there is no such thing as "perfect" code—there is only better code`；不重要的问题按原文建议标 `Nit:`。）
 
 ## 2.5 必查项：并发与共享状态
 
@@ -100,7 +101,9 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | 退出路径 / `trap` / `cleanup` | 枚举全部 `exit` 点（正常结束、无匹配早退、用法错误、被信号中断），逐条实测清理是否发生、退出码是否守约（方法见 §2.6） |
 | 临时文件 / `mktemp` / 缓存目录 | `TMPDIR=` 定向到可控目录后 `ls -A` 计数对比改动前后；不要拿系统默认路径前后差值当唯一证据（方法见 §2.6） |
 
-依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 "There is no such thing as 'perfect' code"，不要求逐项通过；Kubernetes 的 PR 模板是结构化声明而非打勾清单。故本表写成触发式。
+依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 `there is no such thing as "perfect" code—there is only better code`。
+注意区分两个方向：原文 `Reviewers should not require the author to polish every tiny piece of a CL` 说的是**不必逐处打磨**（那是收敛标准），而同站 `looking-for` 页仍要求 `look at every line`（那是覆盖范围）；两者不矛盾，但不能拿前者当“不必逐项查”的依据。
+Kubernetes 的 PR 模板是结构化声明而非打勾清单。故本表写成触发式。
 
 ## 3. 严重度与 finding 格式
 
