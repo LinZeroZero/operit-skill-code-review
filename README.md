@@ -45,6 +45,7 @@ sh install.sh --force               # 已存在时直接覆盖，不备份
 ├── scripts/sweep.sh            取证扫描器（`sh sweep.sh --help` 看用法）
 └── references/
     ├── android/                Android/KSU/apktool 这类工程的三篇补充
+    ├── comments.md             注释审查判据（自研，与语言无关）
     └── upstream/               上游通用参考（按语言/领域分册，含 LICENSE 与 SOURCE.txt）
 ```
 
@@ -52,5 +53,5 @@ sh install.sh --force               # 已存在时直接覆盖，不备份
 
 ## 许可
 
-- 本仓库的 `SKILL.md`、`scripts/`、`references/android/` 为原创，随本仓库分发。
+- 本仓库的 `SKILL.md`、`scripts/`、`references/android/`、`references/comments.md` 为原创，随本仓库分发。
 - `references/upstream/` 来自上游开源代码审查技能，原许可与来源分别见 `references/upstream/LICENSE-code-review-skill.txt` 与 `references/upstream/SOURCE.txt`。

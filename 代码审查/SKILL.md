@@ -49,14 +49,14 @@ description: 审查代码改动或整份文件，输出带 file:line 的 finding
 | Complexity | 行/函数/类是否「读一遍看不懂」？是否为不需要的将来留了抽象？ | 过度设计、投机性抽象要点出 |
 | Tests | 有没有测试？失败路径测了吗？ | 本项目多为反编译/改包/模块脚本类工程，无单测 → 按 §2.6 用可执行证据替代 |
 | Naming | 名字是否准确表达含义？ | 偏好类命名交 linter；**语义误导**（会让人用错）属于可维护性问题，可提 |
-| Comments | 注释是否解释**为什么**，而不是复述代码在做什么？ | 本项目要求注释解释 why、写清运行时状态文件格式与关键约定 |
+| Comments | 注释是否解释**为什么**，而不是复述代码在做什么？与代码是否仍一致？ | 本项目要求注释解释 why、写清运行时状态文件格式与关键约定；一致性判据见 `references/comments.md`（挂 §2.7） |
 | Style | 格式、缩进、行宽、命名偏好 | **不评**，见 §7「明确不做」 |
 | Consistency | 与代码库既有写法一致吗？同一抽象的多实现是否同口径？ | 后者按 §2.7 的 provider 触发项 |
 | Documentation | 改了行为却没说？README / CHANGELOG / 注释是否需同步？ | 对外行为变化时必须提 |
 | Every Line | **逐行读，不跳读** | 与阶段 3 一致；跳读会漏掉「实现得很干净的错方案」 |
 
 依据：https://google.github.io/eng-practices/review/reviewer/looking-for.html
-（该页开头要求结合 The Standard of Code Review 使用：追求持续改善，不追求完美，不重要的问题标 `Nit:`。）
+（该页开头提示：评估下列各项时务必考虑 The Standard of Code Review，原文 `Always make sure to take into account The Standard of Code Review when considering each of these points.`。该标准页原句：`Instead of seeking perfection, what a reviewer should seek is continuous improvement.`、`there is no such thing as "perfect" code—there is only better code`；不重要的问题按原文建议标 `Nit:`。）
 
 **近似判据检查**：当逻辑用「类型 / 名字 / 枚举 / 来源」去近似「实际行为」时（例：按 provider 类型推断「这个数是不是服务端给的」），必须举出至少一个**会误判的具体情形**。举不出来，说明这条判断没有被验证，只是措辞。
 
@@ -78,7 +78,7 @@ Google 工程实践明确：并发问题**几乎无法靠「跑一下没崩」�
 
 Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包、模块脚本这类工程没有单测，替代物是**可执行证据**：
 
-- 「验证」一栏必须写清 **跑了什么命令 → 看到什么输出**，不能只写「测试通过」「功能正常」；
+- 报告必须有「取证明细」一段（见 §3「取证明细」），写清 **跑了什么命令 → 看到什么输出**，不能只写「测试通过」「功能正常」；
 - 证据要能区分「改了」与「没改」：计数、日志行、进程数、`cutime`、sha256、版本号回读；
 - **只在成功路径上跑过，不算验证**：失败路径（超时、断网、so 加载失败、版本号 sed 未命中）要单独给出观察结果；
 - 能自动化就自动化，但**装机观测同样算证据**（`dumpsys`/`ps`/`logcat` 的输出贴进报告）。
@@ -92,6 +92,9 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 - **值时相**：判断「这个值对不对」时，必须对四个时点分别给出观察 —— ①一次操作**前**是什么；②操作**进行中**是什么；③响应/完成**后**是什么；④**切会话 / 重启 / 连点两次**后是什么。四问答完要能填出一张「场景 × 值」表。
   任一问答不出，或答「应该不会变」，都不算审过。
   允许答「不适用」，但必须写明**为什么该时点不存在该值**（例：回编后落盘的 sha256，过程中不产生可见值）。「不适用」与「答不出」分开判定：前者合格，后者不合格。
+- **改动涉及退出路径时，枚举全部 `exit` 点并逐条实测**：改到 `trap` / `cleanup` / 早退分支 / `exit` 的代码，先列出所有退出路径（正常结束、无匹配早退、用法错误、被信号中断），再逐条跑完看「清理是否发生、退出码是否守约」。只测成功路径会得到假阴性：实测踩过 —— 审一个删掉 `trap cleanup EXIT` 的改动，正常退出与早退两条路径都残留临时目录，只有信号路径干净，而信号路径恰好是注释里唯一写过的实测记录（照注释核对会得出「没问题」）。
+- **临时产物类改动用可控落地位置取证**：涉及 `mktemp` / 临时文件 / 缓存目录时，先 `TMPDIR=<自建目录> <命令>` 把产物定向到能 `ls` 的地方，再 `ls -A` 计数对比改动前后；不要用「数系统默认路径（`/tmp`）前后差值」当唯一证据 —— 别的进程会往同一路径写，差值会串味。
+
 
 ## 2.7 改动类型触发项
 
@@ -104,8 +107,13 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | UI 显示值来源 | 时点检查按 §2.6 的四时点表；另需看该值与同一界面上既有同类值是否同源 |
 | 计费 / 配额 / 限额 | 计费单位（次 / token / 金额）、缓存折扣、时区与重置点 |
 | 持久化结构变更 | 迁移路径、旧数据兼容、回滚方式 |
+| 注释与被注释对象 | 改了签名 / 返回值 / 抛错 / 行为分支 → 对应注释是否同步（判据见 `references/comments.md`） |
+| 退出路径 / `trap` / `cleanup` | 枚举全部 `exit` 点（正常结束、无匹配早退、用法错误、被信号中断），逐条实测清理是否发生、退出码是否守约（方法见 §2.6） |
+| 临时文件 / `mktemp` / 缓存目录 | `TMPDIR=` 定向到可控目录后 `ls -A` 计数对比改动前后；不要拿系统默认路径前后差值当唯一证据（方法见 §2.6） |
 
-依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 "There is no such thing as 'perfect' code"，不要求逐项通过；Kubernetes 的 PR 模板是结构化声明而非打勾清单。故本表写成触发式。
+依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 `there is no such thing as "perfect" code—there is only better code`。
+注意区分两个方向：原文 `Reviewers should not require the author to polish every tiny piece of a CL` 说的是**不必逐处打磨**（那是收敛标准），而同站 `looking-for` 页仍要求 `look at every line`（那是覆盖范围）；两者不矛盾，但不能拿前者当“不必逐项查”的依据。
+Kubernetes 的 PR 模板是结构化声明而非打勾清单。故本表写成触发式。
 
 ## 3. 严重度与 finding 格式
 
@@ -122,10 +130,23 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | # | 严重度 | 位置 | 问题 | 依据 | 建议 | 存疑 |
 ```
 
+**「问题」列的注释类前缀**：只有注释一致性类型的 finding 需要以 `【注释】`/`【代码】`/`【跨文件】`/`【未知】` 之一打头（**集合与定义以 `references/comments.md` §1「归类前缀」为准**，此处只是索引），其他 finding 不需要。
+
 - **位置**：`file:line`；跨文件就写主责文件 + 关联点。
 - **依据**：必须是可指认的东西——`references/android/shell-magisk.md#备份只写一次`、`references/upstream/c.md#Always carry size with buffers`、某条命令的实测输出。写不出依据就降级到「存疑」。
 - **建议**：给出方向即可，不要替用户重写整个文件（见 §7）。
 - **存疑**：`未实测` / `依赖具体内核` / `需在目标机确认`。**这一列是本技能的信誉来源**：把推测混进结论，一次就够让整份报告作废。
+- **`—`**：只允许出现在「建议」「存疑」两列，不算缺列。建议列 `—` = 不给方向；存疑列 `—` = 无存疑。**位置 / 问题 / 依据 / 严重度四列不得为 `—`** —— 依据写不出来就降级到「存疑」，不能拿 `—` 绕过。
+
+**取证明细**：报告在 findings 表之前先写一段「取证明细」：本轮跑了哪些命令、各自看到什么（命中数 / 行数 / 关键输出）。它承载的是**整体证据**，不是某条 finding 的支撑——后者仍写在七列的「依据」里。
+
+- 只列「能区分改了 / 没改」的关键命令，其余合并成一行；
+- 位置固定在结论之后、findings 表之前；
+- 超过 10 行只留摘要，明细另附（10 行是项目约定，不是行业标准）。
+
+没有跑任何命令时写「本轮无命令取证，全部为文本核对」，不要留空——留空会被读成「跑过、没发现问题」。
+
+- **顺序可被调用方改写**：调用方指定输出顺序（例如「先 finding 表、后取证明细」）时以其为准，并在报告开头写一句「与 §3 默认顺序的差异」；顺序只是阅读偏好，`结论`、`取证明细`、`findings 表` 三块一块都不能省。
 
 ### 3.1 判定权：只出 finding，不出合并决定
 
@@ -163,6 +184,7 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | 其他语言 | `references/upstream/<lang>.md`：`c` `cpp` `csharp` `go` `java` `java8` `kotlin` `python` `php` `ruby` `rust` `swift` `dart` `typescript` `zig` `qt`；前端 `react` `vue` `angular` `svelte` `css-less-sass`；后端 `django` `fastapi` `nestjs` |
 | 跨领域 | `references/upstream/cross-cutting/`：`sql-injection-prevention` `xss-prevention` `n-plus-one-queries` `error-handling-principles` `async-concurrency-patterns` |
 | 通用质量 | `references/upstream/code-quality-universal.md`、`references/upstream/common-bugs-checklist.md`、`references/upstream/security-review-guide.md`、`references/upstream/performance-review-guide.md` |
+| 注释一致性 | `references/comments.md`（判据档，独立于语言档，任何语言都适用） |
 | 反馈怎么说 | `references/upstream/code-review-best-practices.md` |
 
 上游档是英文原文，按小节标题（`##`）取用；引用时写清小节名，方便对方回查。
@@ -177,6 +199,10 @@ sh <SKILL_DIR>/scripts/sweep.sh --max-hits 50 .     # 每模式最多 50 行（�
 ```
 
 默认输出三段：`== env ==`（8 个外部命令是否存在，别假设 toybox 都有）、`== toolchain ==`（toybox/busybox 位置与 applet）、`== patterns ==`（5 条危险模式 + 命中数，超限截断）；加 `--no-env` 时只剩 `== patterns ==`。`/sdcard` 是 noexec，只能 `sh <path>` 调用。
+
+退出码：`0` 正常（含「无匹配文件」）、`1` 无法创建临时目录、`2` 用法错误（未知选项 / 路径不存在）、`130`·`129`·`143` 分别对应 INT/HUP/TERM 中断。**`2` 不是崩溃**，别把用法错误报成运行时故障。
+
+环境差异：`== toolchain ==` 在无 `/system/bin/toybox` 的环境（proot、普通 Linux）会输出 `toybox/busybox: not found under /system/bin`，这是预期结果而不是脚本故障 —— 静态证据允许在设备外的 POSIX 环境取，但报告里要写明取证环境，否则「toybox 不存在」会被读成设备有问题。
 
 ### 5.1 五条模式与判断要点
 
@@ -209,6 +235,8 @@ node -e "const a=require('<SKILL_DIR_UI>/scripts/audit.js'); console.log(a.audit
 - `references/android/shell-magisk.md`：模块生命周期与时机、外部命令可用性、fork 与单例、备份/还原对称性、sysfs 写失败静默、noexec 约束。审 Magisk/KernelSU/APatch 模块脚本时**先读这份**。
 - `references/android/ksu-webui.md`：`ksu.exec` 返回值形态、错误分支、执行成功不等于命令成功、DOM 取值方式、视口与缩放。
 - `references/android/smali-apk.md`：寄存器宽度与 `/range`、`const/4` 边界、资源 ID 连带、manifest 运行时副作用、R8 混淆后的定位方式。
+
+这三档只覆盖 Android 侧。判据档 `references/comments.md` 与语言无关，任何工程都适用，不在这三档之内。
 
 ## 7. 明确不做
 
@@ -252,11 +280,11 @@ node -e "const a=require('<SKILL_DIR_UI>/scripts/audit.js'); console.log(a.audit
 
 ## 10. 目录与许可
 
-上游底稿：`awesome-skills/code-review-skill`（MIT，提交号与更新方法见 `references/upstream/SOURCE.txt`）。`references/upstream/` 30 篇（24 篇语言/前端/后端档 + 6 篇通用档）+ 5 篇跨领域（英文原文）；`references/android/` 自研三档（中文）。目录树由宿主注入，不重复。
+上游底稿：`awesome-skills/code-review-skill`（MIT，提交号与更新方法见 `references/upstream/SOURCE.txt`）。`references/upstream/` 30 篇（24 篇语言/前端/后端档 + 6 篇通用档）+ 5 篇跨领域（英文原文）；`references/android/` 自研三档（中文）；`references/comments.md` 自研判据档（中文，与语言无关）。目录树由宿主注入，不重复。
 
 ## 11. 使用前自检
 
-**覆盖**：shell/Magisk、KSU WebUI、smali 三档与 20+ 语言；四阶段流程、十项审查维度（§2.4）、改动类型触发项（§2.7）、严重度分级、判定权边界（§3.1）、值时相四问（§2.6）、带 file:line 的 finding。
+**覆盖**：以正文与 `references/` 目录为准 —— §2 四阶段与十项维度、§2.5 并发必查、§2.6 验证口径、§2.7 触发项、§3 finding 格式与取证、§4 路由、§5 取证命令、§6 三档、§9 自审、`references/comments.md` 注释判据。**此处不逐条枚举**：逐条清单会随正文演进掉队（实测三轮里落后两次）。
 
 **不覆盖**：运行时性能剖析、模糊测试、整体架构评审、加固包逆向（交「APK逆向改包」技能）。
 
