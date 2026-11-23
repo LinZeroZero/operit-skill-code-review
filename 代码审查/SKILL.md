@@ -56,6 +56,12 @@ description: 审查代码改动或整份文件，输出带 file:line 的 finding
 依据：https://google.github.io/eng-practices/review/reviewer/looking-for.html
 （该页开头要求结合 The Standard of Code Review 使用：追求持续改善，不追求完美，不重要的问题标 `Nit:`。）
 
+**近似判据检查**：当逻辑用「类型 / 名字 / 枚举 / 来源」去近似「实际行为」时（例：按 provider 类型推断「这个数是不是服务端给的」），必须举出至少一个**会误判的具体情形**。举不出来，说明这条判断没有被验证，只是措辞。
+
+常见形态：用 `type` 近似 `semantics`、用 `name` 近似 `capability`、用「由谁调用」近似「值从哪来」。举出反例后判断仍成立，就在 finding 里写明它；一举反例即失效的，降级为假设，进「存疑」列（见 §3）。
+
+实测（2026-11，Operit PR #1519）：判据写成「provider 类型是 GOOGLE / GEMINI_GENERIC 才显示真实值」，两个方向都错——本地推理（MNN / llama.cpp）用本地 `countTokens()` 走同一条上报通道却被当成真值；`OpenCodeProvider.kt` 里的 `OpenCodeGeminiProvider : GeminiProvider` 配置类型是 `OPENCODE`，真实上报反被藏掉。
+
 ## 2.5 必查项：并发与共享状态
 
 Google 工程实践明确：并发问题**几乎无法靠「跑一下没崩」发现**，必须人想。所以这一条是**必查**，不是可选：
