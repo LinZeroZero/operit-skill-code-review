@@ -110,6 +110,7 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | 注释与被注释对象 | 改了签名 / 返回值 / 抛错 / 行为分支 → 对应注释是否同步（判据见 `references/comments.md`） |
 | 退出路径 / `trap` / `cleanup` | 枚举全部 `exit` 点（正常结束、无匹配早退、用法错误、被信号中断），逐条实测清理是否发生、退出码是否守约（方法见 §2.6） |
 | 临时文件 / `mktemp` / 缓存目录 | `TMPDIR=` 定向到可控目录后 `ls -A` 计数对比改动前后；不要拿系统默认路径前后差值当唯一证据（方法见 §2.6） |
+| 脚本 / 工具的默认路径与环境变量 | 逐个确认它是**读**还是**写**：默认值在哪、跑起来写到哪个目录、那个目录是不是工作树。两边都要看 —— 只查输入源（打哪份文件）会漏掉产物落点（默认输出写到哪，是不是落进了仓库） |
 
 依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 `there is no such thing as "perfect" code—there is only better code`。
 注意区分两个方向：原文 `Reviewers should not require the author to polish every tiny piece of a CL` 说的是**不必逐处打磨**（那是收敛标准），而同站 `looking-for` 页仍要求 `look at every line`（那是覆盖范围）；两者不矛盾，但不能拿前者当“不必逐项查”的依据。
