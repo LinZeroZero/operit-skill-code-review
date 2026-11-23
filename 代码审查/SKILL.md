@@ -116,6 +116,8 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | # | 严重度 | 位置 | 问题 | 依据 | 建议 | 存疑 |
 ```
 
+**「问题」列的注释类前缀**：只有注释一致性类型的 finding 需要以 `【注释】`/`【代码】`/`【跨文件】`/`【未知】` 之一打头（定义与核对命令见 `references/comments.md` §1「归类前缀」），其他 finding 不需要。
+
 - **位置**：`file:line`；跨文件就写主责文件 + 关联点。
 - **依据**：必须是可指认的东西——`references/android/shell-magisk.md#备份只写一次`、`references/upstream/c.md#Always carry size with buffers`、某条命令的实测输出。写不出依据就降级到「存疑」。
 - **建议**：给出方向即可，不要替用户重写整个文件（见 §7）。
