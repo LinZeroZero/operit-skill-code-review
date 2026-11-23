@@ -92,6 +92,7 @@ Google 要求「测试与产品代码在**同一个 CL**」。反编译、改包
 | UI 显示值来源 | 该值的写入时机、清空时机、跨会话 / 重启的持久性；与同一界面上既有同类值是否同源 |
 | 计费 / 配额 / 限额 | 计费单位（次 / token / 金额）、缓存折扣、时区与重置点 |
 | 持久化结构变更 | 迁移路径、旧数据兼容、回滚方式 |
+| 注释与被注释对象 | 改了签名 / 返回值 / 抛错 / 行为分支 → 对应注释是否同步（判据见 `references/comments.md`） |
 
 依据：Google eng-practices 的审查维度（Design / Functionality / Complexity / Tests / Naming / Comments / Style / Consistency / Documentation / Every Line）是「该从哪些角度想」，并明确 "There is no such thing as 'perfect' code"，不要求逐项通过；Kubernetes 的 PR 模板是结构化声明而非打勾清单。故本表写成触发式。
 
