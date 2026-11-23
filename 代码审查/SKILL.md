@@ -243,7 +243,7 @@ node -e "const a=require('<SKILL_DIR_UI>/scripts/audit.js'); console.log(a.audit
 
 ## 11. 使用前自检
 
-**覆盖**：shell/Magisk、KSU WebUI、smali 三档与 20+ 语言；四阶段流程、十项审查维度（§2.4）、改动类型触发项（§2.7）、注释一致性（§2.4 / `references/comments.md`）、严重度分级、带 file:line 的 finding。
+**覆盖**：以正文与 `references/` 目录为准 —— §2 四阶段与十项维度、§2.5 并发必查、§2.6 验证口径、§2.7 触发项、§3 finding 格式与取证、§4 路由、§5 取证命令、§6 三档、§9 自审、`references/comments.md` 注释判据。**此处不逐条枚举**：逐条清单会随正文演进掉队（实测三轮里落后两次）。
 
 **不覆盖**：运行时性能剖析、模糊测试、整体架构评审、加固包逆向（交「APK逆向改包」技能）。
 
