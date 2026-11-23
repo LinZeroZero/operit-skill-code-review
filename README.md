@@ -2,9 +2,9 @@
 
 Operit 技能「代码审查」的仓库。
 
-给 AI 一套**带证据的代码审查流程**：十维度扫查、按改动类型触发的必查项、四级严重度、带 `file:line` 的 finding 输出，外加一个取证脚本 `scripts/sweep.sh`（环境探测 + 危险模式扫描）。
+给 AI 一套**带证据的代码审查流程**：十维度扫查、按改动类型触发的必查项、四级严重度、带 `file:line` 的 finding 输出，附两个脚本：`scripts/sweep.sh` 取证扫描（环境探测 + 危险模式扫描）、`scripts/make-release.sh` 打发布包（引用完整性断言）。
 
-- 最后验证：2026-11-22（Operit Android 版）
+- 最后验证：2026-11-23（Operit Android 版，v1.1.0）
 - 依赖：无。`sweep.sh` 是 POSIX sh，toybox 与 GNU 环境都能跑；在 `/sdcard`（noexec）上用 `sh sweep.sh` 调用，不要 `./sweep.sh`。
 
 ## 安装
@@ -49,7 +49,23 @@ sh install.sh --force               # 已存在时直接覆盖，不备份
     └── upstream/               上游通用参考（按语言/领域分册，含 LICENSE 与 SOURCE.txt）
 ```
 
-为什么技能放在 `代码审查/` 子目录而不是仓库根上：这样两条安装路径（release 包解出来、内置导入 copy 出来的）都**只**包含技能本体，`README.md`、`install.sh`、`.gitignore` 不会被塞进技能目录。
+为什么技能放在 `代码审查/` 子目录而不是仓库根上：这样两条安装路径（release 包解出来、内置导入 copy 出来的）都**只**包含技能本体，`README.md`、`install.sh`、`.gitignore` 不会被塞进技能目录。仓库根的 `scripts/make-release.sh`（打发布包）同理，也不进技能目录。
+
+## 发版
+
+```sh
+sh scripts/make-release.sh              # 默认打仓库内 代码审查/，输出 ./code-review.tar.gz
+sh scripts/make-release.sh --check      # 只做引用完整性检查，不打包
+sh scripts/make-release.sh <技能目录> <输出路径>
+```
+
+退出码：`0` 成功 / `1` 用法 / `2` 目录不合规 / `3` 引用缺失 / `4` 打包失败 / `5` 包内校验失败。
+
+输出含 `COMMIT=`，即出包源所在的提交；对非 git 目录（如 `/sdcard` 的安装副本）输出 `unknown`。
+
+**不要手工打包。** 手工 `tar` 最常出的错不是打失败，是「`SKILL.md` 引用了 `references/` 里某个文件，但那个文件没进包」—— 装完之后只在审查时 `read_file` 失败，报错点离病因很远。脚本从 `SKILL.md` 抓出全部 `references/*.md` 逐个核对，缺一个就拒绝出包；打完再解一遍清单反查，不信任 `tar` 的退出码。
+
+资产名必须是 `code-review.tar.gz` —— `install.sh` 取的是 `releases/latest/download/code-review.tar.gz`。
 
 ## 许可
 

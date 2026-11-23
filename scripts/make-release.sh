@@ -44,13 +44,25 @@ for arg in "$@"; do
   esac
 done
 
-[ -n "$SKILL_DIR" ] || SKILL_DIR="/sdcard/Download/Operit/skills/$NAME"
+# 默认优先打「脚本所在仓库」里的技能目录，而不是已安装的那份。
+# 安装目录可能落后于仓库（装完没重装 / 本地改过没提交），照它出包会得到一个
+# 与 tag 不符的资产，而输出里的 SIZE/SHA256 自己不会报警 —— 所以同时输出 COMMIT。
+if [ -z "$SKILL_DIR" ]; then
+  SELF_DIR=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+  if [ -n "$SELF_DIR" ] && [ -f "$SELF_DIR/../$NAME/SKILL.md" ]; then
+    SKILL_DIR=$(cd "$SELF_DIR/../$NAME" && pwd)
+  else
+    SKILL_DIR="/sdcard/Download/Operit/skills/$NAME"
+  fi
+fi
 [ -n "$OUT" ] || OUT="$PWD/code-review.tar.gz"
 
 # ---- 1. 目录合规 ----
 [ -d "$SKILL_DIR" ] || die "技能目录不存在: $SKILL_DIR" 2
 [ -f "$SKILL_DIR/SKILL.md" ] || die "技能目录里没有 SKILL.md: $SKILL_DIR" 2
 BASE=$(basename "$SKILL_DIR")
+# 出包源到底是哪个提交：非 git 目录（如 /sdcard 安装副本）输出 unknown。
+COMMIT=$(git -C "$SKILL_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 # ---- 2. 引用完整性：断言来源就是 SKILL.md 自己 ----
 # 只取 references/ 下的 .md；`#anchor` 不会被这个正则带走。
@@ -74,6 +86,7 @@ done
 if [ "$CHECK_ONLY" -eq 1 ]; then
   printf 'STATUS=check-ok\n'
   printf 'DIR=%s\n' "$SKILL_DIR"
+  printf 'COMMIT=%s\n' "$COMMIT"
   printf 'REFS=%s\n' "$REF_CNT"
   exit 0
 fi
@@ -112,3 +125,4 @@ printf 'SIZE=%s\n' "${SIZE:-unknown}"
 printf 'SHA256=%s\n' "${SUM:-unknown}"
 printf 'FILES=%s\n' "${NFILES:-unknown}"
 printf 'REFS=%s\n' "$REF_CNT"
+printf 'COMMIT=%s\n' "$COMMIT"
