@@ -65,6 +65,10 @@ fi
 BASE=$(basename "$SKILL_DIR")
 # 出包源到底是哪个提交：非 git 目录（如 /sdcard 安装副本）输出 unknown。
 COMMIT=$(git -C "$SKILL_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)
+# 脏树信号：COMMIT 只说明「基于哪个提交」，不说明「内容与它一致」。
+# 不阻断（本地开发时 --check 经常在脏树上跑），但必须能被消费方看见。
+DIRTY=0
+if [ -n "$(git -C "$SKILL_DIR" status --porcelain -- . 2>/dev/null | head -1)" ]; then DIRTY=1; fi
 
 # ---- 2. 引用完整性：断言来源就是 SKILL.md 自己 ----
 # 只取 references/ 下的 .md；`#anchor` 不会被这个正则带走。
@@ -89,6 +93,7 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
   printf 'STATUS=check-ok\n'
   printf 'DIR=%s\n' "$SKILL_DIR"
   printf 'COMMIT=%s\n' "$COMMIT"
+  printf 'DIRTY=%s\n' "$DIRTY"
   printf 'REFS=%s\n' "$REF_CNT"
   exit 0
 fi
@@ -97,7 +102,14 @@ fi
 # 从父目录打包，保证包顶层是中文技能名；.git 与编辑备份不入包。
 PARENT=$(dirname "$SKILL_DIR")
 rm -f "$OUT" 2>/dev/null
-(cd "$PARENT" && tar -czf "$OUT" --exclude="$BASE/.git" --exclude='*.bak' "$BASE") \
+# 可复现打包：同样内容每次打出同一个包，sha256 才能拿来做「资产≡提交」的比对。
+# tar 默认把 mtime 写进包头 —— 只 touch 一下同一个文件，包就变了，而内容根本没动。
+# GNU tar 支持 --sort/--mtime/--owner，toybox 不一定；探测不到就不加（退化：sha 每次不同）。
+TAR_REPRO=""
+if tar --help 2>/dev/null | grep -q -- '--sort'; then
+  TAR_REPRO="--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner"
+fi
+(cd "$PARENT" && tar $TAR_REPRO -czf "$OUT" --exclude="$BASE/.git" --exclude='*.bak' "$BASE") \
   || die "打包失败: $OUT" 4
 
 # ---- 4. 包内反查：不信退出码，重新解一遍清单 ----
@@ -128,3 +140,4 @@ printf 'SHA256=%s\n' "${SUM:-unknown}"
 printf 'FILES=%s\n' "${NFILES:-unknown}"
 printf 'REFS=%s\n' "$REF_CNT"
 printf 'COMMIT=%s\n' "$COMMIT"
+printf 'DIRTY=%s\n' "$DIRTY"
