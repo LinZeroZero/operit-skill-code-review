@@ -105,9 +105,11 @@ rm -f "$OUT" 2>/dev/null
 # 可复现打包：同样内容每次打出同一个包，sha256 才能拿来做「资产≡提交」的比对。
 # tar 默认把 mtime 写进包头 —— 只 touch 一下同一个文件，包就变了，而内容根本没动。
 # GNU tar 支持 --sort/--mtime/--owner，toybox 不一定；探测不到就不加（退化：sha 每次不同）。
+# --mode 不能省：目录权限位（尤其是 setgid）也会进包头。实测同一 tag 在两台机器上
+# 打包，一个目录是 2770、一个是 700，包就不同 —— 只固定 mtime/owner/sort 不够。
 TAR_REPRO=""
 if tar --help 2>/dev/null | grep -q -- '--sort'; then
-  TAR_REPRO="--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner"
+  TAR_REPRO="--sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --mode=a-s,u=rwX,go=rX"
 fi
 (cd "$PARENT" && tar $TAR_REPRO -czf "$OUT" --exclude="$BASE/.git" --exclude='*.bak' "$BASE") \
   || die "打包失败: $OUT" 4
