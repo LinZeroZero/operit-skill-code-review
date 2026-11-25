@@ -55,18 +55,28 @@ sh install.sh --force               # 已存在时直接覆盖，不备份
 
 ```sh
 sh scripts/make-release.sh              # 默认打仓库内 代码审查/，输出 ${TMPDIR:-/tmp}/code-review.tar.gz
-sh scripts/make-release.sh --check      # 只做引用完整性检查，不打包
+sh scripts/make-release.sh --check      # 引用完整性 + Release 正文状态（AUDIT=…），不打包
 sh scripts/make-release.sh <技能目录> <输出路径>
 ```
 
-退出码：`0` 成功 / `1` 用法 / `2` 目录不合规 / `3` 引用缺失 / `4` 打包失败 / `5` 包内校验失败。
+退出码：`0` 成功 / `1` 用法 / `2` 目录不合规 / `3` 引用缺失 / `4` 打包失败 / `5` 包内校验失败 / `6` Release 正文缺 `## 审查` 节（或节内没有 PR 号）。
 
 输出含 `COMMIT=`（出包源所在提交，非 git 目录为 `unknown`）与 `DIRTY=0/1`（**技能目录内**是否还有未提交改动 —— 只看 `代码审查/`，仓库根改了不影响包内容）。
 `DIRTY=1` 时 `COMMIT` 只能说明「基于哪个提交」，不能说明「内容与它一致」—— 拿这种包去发版，资产就无法与标签对上。
 
 **不要手工打包。** 手工 `tar` 最常出的错不是打失败，是「`SKILL.md` 引用了 `references/` 里某个文件，但那个文件没进包」—— 装完之后只在审查时 `read_file` 失败，报错点离病因很远。脚本从 `SKILL.md` 抓出全部 `references/*.md` 逐个核对，缺一个就拒绝出包；打完再解一遍清单反查，不信任 `tar` 的退出码。
 
+**出包前先备好 Release 正文（规则 8 的第二道门）**：仓库根的 `RELEASE_NOTES.md` 必须有一节
+`## 审查`，节内写明对应 PR 号与审查结论摘要 —— 缺了它、或节内没有 PR 号，脚本拒绝出包（退出码 6）；
+`--check` 只报告 `AUDIT=ok/missing`，不拦截。这份文件同时就是发版正文：建 Release 时把它贴进正文，
+别再手写一份造成两处不同步。
+
 资产名必须是 `code-review.tar.gz` —— `install.sh` 取的是 `releases/latest/download/code-review.tar.gz`。
+
+digest 环境绑定：资产用 GNU tar（proot 内）构建，`SHA256` 只用于验证**同一环境**的重建；
+toybox tar（Android 本体）打的包内容相同、字节不同 —— 跨环境 digest 对不上是预期行为，
+别拿它当损坏信号。
+
 
 ## 许可
 
