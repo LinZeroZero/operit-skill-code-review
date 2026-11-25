@@ -18,9 +18,10 @@
 #   sh make-release.sh --check                  # 只做引用完整性检查，不打包
 #
 # 输出（每行 KEY=VALUE，便于脚本消费）:
-#   STATUS / DIR / ASSET / SIZE / SHA256 / FILES / REFS
+#   STATUS / DIR / ASSET / SIZE / SHA256 / FILES / REFS / AUDIT / NOTES
 #
 # 退出码: 0 成功 / 1 用法 / 2 目录不合规 / 3 引用缺失 / 4 打包失败 / 5 包内校验失败
+#         6 Release 正文缺 ## 审查 节（或节内没有 PR 号）
 
 set -u
 NAME="代码审查"
@@ -89,14 +90,31 @@ for r in $REFS; do
 done
 [ "$miss" -eq 0 ] || die "有 $miss 个被引用的文件缺失，拒绝出包" 3
 
+# ---- 2.5 出包门（规则 8）：Release 正文必须带 ## 审查 节 ----
+# 门装在出包动作上：--check 只报告状态（AUDIT=missing 不拦），真正出包时缺了就拒绝。
+# 节内必须引用至少一个 PR 号（如 #8）——只写个空节应付格式，过不了这关。
+SELF_ROOT=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
+NOTES="$SELF_ROOT/RELEASE_NOTES.md"
+audit_section_ok() {
+  awk '
+    /^## / { in_sec = ($0 ~ /^## 审查/) ? 1 : 0; next }
+    in_sec && /#[0-9][0-9]*/ { found = 1 }
+    END { exit (found ? 0 : 1) }
+  ' "$1" 2>/dev/null
+}
+if [ -f "$NOTES" ] && audit_section_ok "$NOTES"; then AUDIT=ok; else AUDIT=missing; fi
+
 if [ "$CHECK_ONLY" -eq 1 ]; then
   printf 'STATUS=check-ok\n'
   printf 'DIR=%s\n' "$SKILL_DIR"
   printf 'COMMIT=%s\n' "$COMMIT"
   printf 'DIRTY=%s\n' "$DIRTY"
   printf 'REFS=%s\n' "$REF_CNT"
+  printf 'AUDIT=%s\n' "$AUDIT"
   exit 0
 fi
+
+[ "$AUDIT" = ok ] || die "Release 正文没有可用的 ## 审查 节（节内须引用 PR 号）: $NOTES —— 规则 8：发版前必须留审查痕迹" 6
 
 # ---- 3. 打包 ----
 # 从父目录打包，保证包顶层是中文技能名；.git 与编辑备份不入包。
@@ -141,5 +159,7 @@ printf 'SIZE=%s\n' "${SIZE:-unknown}"
 printf 'SHA256=%s\n' "${SUM:-unknown}"
 printf 'FILES=%s\n' "${NFILES:-unknown}"
 printf 'REFS=%s\n' "$REF_CNT"
+printf 'AUDIT=%s\n' "$AUDIT"
+printf 'NOTES=%s\n' "$NOTES"
 printf 'COMMIT=%s\n' "$COMMIT"
 printf 'DIRTY=%s\n' "$DIRTY"
